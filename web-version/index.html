@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能摄影助手 - 网页版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #fd7e14, #ffc107);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .analysis-results {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+
+        .analysis-item .label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .analysis-item .value {
+            font-weight: 700;
+            color: #007bff;
+        }
+
+        .suggestions {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .suggestions h3 {
+            color: #0056b3;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .suggestions ul {
+            list-style: none;
+        }
+
+        .suggestions li {
+            padding: 5px 0;
+            color: #495057;
+        }
+
+        .suggestions li::before {
+            content: "💡 ";
+            margin-right: 8px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #007bff;
+            background: #e7f3ff;
+            transform: scale(1.02);
+        }
+
+        .reference-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: #007bff;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-good {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .detection-box {
+            position: absolute;
+            border: 3px solid;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .detection-box.good {
+            border-color: #28a745;
+        }
+
+        .detection-box.warning {
+            border-color: #ffc107;
+        }
+
+        .detection-box.error {
+            border-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 AI智能摄影助手</h1>
+            <p>使用人工智能分析照片构图，提供专业拍摄指导</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 参考照片上传区域 -->
+            <div class="card">
+                <h2>📸 参考照片分析</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div id="uploadPrompt">
+                        <h3>点击或拖拽上传参考照片</h3>
+                        <p>支持 JPG、PNG 格式</p>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="imagePreview" style="display: none;">
+                        <img id="referenceImage" class="reference-image" alt="参考照片">
+                        <br><br>
+                        <button class="btn btn-secondary" onclick="clearReference()">
+                            🗑️ 清除照片
+                        </button>
+                    </div>
+                </div>
+
+                <div id="referenceAnalysis" style="display: none;">
+                    <div class="analysis-results">
+                        <h3>📊 分析结果</h3>
+                        <div id="referenceResults"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时相机区域 -->
+            <div class="card">
+                <h2>📹 智能相机</h2>
+                
+                <div class="video-container">
+                    <video id="videoElement" autoplay muted playsinline></video>
+                    <canvas id="overlayCanvas" class="canvas-overlay"></canvas>
+                    <svg class="grid-overlay" id="gridOverlay">
+                        <!-- 网格线将通过JavaScript绘制 -->
+                    </svg>
+                    <div id="statusIndicator" class="status-indicator" style="display: none;"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="startCameraBtn" onclick="startCamera()">
+                        📷 启动相机
+                    </button>
+                    <button class="btn btn-secondary" id="stopCameraBtn" onclick="stopCamera()" disabled>
+                        ⏹️ 停止相机
+                    </button>
+                    <button class="btn btn-success" id="captureBtn" onclick="capturePhoto()" disabled>
+                        📸 拍摄照片
+                    </button>
+                    <button class="btn btn-warning" id="toggleAnalysisBtn" onclick="toggleAnalysis()" disabled>
+                        🔍 开始分析
+                    </button>
+                </div>
+
+                <div id="realtimeAnalysis" style="display: none;">
+                    <div class="analysis-results">
+                        <h3>📈 实时分析</h3>
+                        <div id="currentResults"></div>
+                    </div>
+                </div>
+
+                <div id="suggestions" class="suggestions" style="display: none;">
+                    <h3>💡 拍摄建议</h3>
+                    <ul id="suggestionsList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TensorFlow.js 和 PoseNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@0.0.3/dist/face-landmarks-detection.js"></script>
+
+    <script>
+        // 全局变量
+        let video, canvas, ctx;
+        let poseNet, faceModel;
+        let isAnalyzing = false;
+        let referenceAnalysis = null;
+        let analysisInterval = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await initializeModels();
+            setupEventListeners();
+        });
+
+        // 初始化AI模型
+        async function initializeModels() {
+            try {
+                console.log('正在加载AI模型...');
+                
+                // 加载PoseNet模型
+                poseNet = await posenet.load({
+                    architecture: 'MobileNetV1',
+                    outputStride: 16,
+                    inputResolution: { width: 640, height: 480 },
+                    multiplier: 0.75
+                });
+                
+                // 加载面部检测模型
+                faceModel = await faceLandmarksDetection.load(
+                    faceLandmarksDetection.SupportedPackages.mediapipeFacemesh
+                );
+                
+                console.log('AI模型加载完成');
+            } catch (error) {
+                console.error('模型加载失败:', error);
+                alert('AI模型加载失败，请刷新页面重试');
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // 文件上传
+            uploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 拖拽上传
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleDrop);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+
+            // 初始化视频和画布
+            video = document.getElementById('videoElement');
+            canvas = document.getElementById('overlayCanvas');
+            ctx = canvas.getContext('2d');
+
+            // 绘制网格
+            drawGrid();
+        }
+
+        // 处理文件选择
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processUploadedImage(file);
+            }
+        }
+
+        // 处理拖拽
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                processUploadedImage(files[0]);
+            }
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        // 处理上传的图片
+        function processUploadedImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('referenceImage');
+                img.src = e.target.result;
+                
+                document.getElementById('uploadPrompt').style.display = 'none';
+                document.getElementById('imagePreview').style.display = 'block';
+                
+                // 分析参考照片
+                analyzeReferenceImage(img);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 分析参考照片
+        async function analyzeReferenceImage(imgElement) {
+            try {
+                document.getElementById('referenceAnalysis').innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>正在分析参考照片...</span>
+                    </div>
+                `;
+                document.getElementById('referenceAnalysis').style.display = 'block';
+
+                // 创建临时canvas来处理图片
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                tempCanvas.width = imgElement.naturalWidth;
+                tempCanvas.height = imgElement.naturalHeight;
+                tempCtx.drawImage(imgElement, 0, 0);
+
+                // 进行姿态检测
+                const poses = await poseNet.estimateSinglePose(tempCanvas, {
+                    flipHorizontal: false
+                });
+
+                // 进行面部检测
+                const faces = await faceModel.estimateFaces({
+                    input: tempCanvas,
+                    returnTensors: false,
+                    flipHorizontal: false
+                });
+
+                // 分析结果
+                referenceAnalysis = analyzePersonPose(poses, faces, tempCanvas.width, tempCanvas.height);
+                displayReferenceAnalysis(referenceAnalysis);
+
+                // 分析成功后自动启动相机并开始分析
+                setTimeout(async () => {
+                    if (referenceAnalysis) {
+                        // 显示提示信息
+                        document.getElementById('referenceAnalysis').innerHTML += `
+                            <div style="margin-top: 15px; padding: 10px; background: #e7f3ff; border-radius: 8px; text-align: center;">
+                                <strong>📸 分析完成！正在启动智能相机...</strong>
+                            </div>
+                        `;
+                        
+                        // 启动相机
+                        if (!video.srcObject) {
+                            await startCamera();
+                        }
+                        
+                        // 等待一秒后开始分析
+                        setTimeout(() => {
+                            if (!isAnalyzing && video.srcObject) {
+                                startAnalysis();
+                            }
+                        }, 1000);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                console.error('分析失败:', error);
+                document.getElementById('referenceAnalysis').innerHTML = `
+                    <div style="color: red; padding: 20px; text-align: center;">
+                        分析失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 分析人体姿态
+        function analyzePersonPose(poses, faces, width, height) {
+            if (!poses || poses.score < 0.1) {
+                throw new Error('未检测到人体');
+            }
+
+            const keypoints = poses.keypoints.filter(kp => kp.score > 0.1);
+            
+            if (keypoints.length === 0) {
+                throw new Error('未检测到有效关键点');
+            }
+            
+            const xs = keypoints.map(kp => kp.position.x);
+            const ys = keypoints.map(kp => kp.position.y);
+            
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            
+            const padding = 0.05;
+            const boundingBox = {
+                x: Math.max(0, (minX / width) - padding),
+                y: Math.max(0, (minY / height) - padding),
+                width: Math.min(1, (maxX - minX) / width + 2 * padding),
+                height: Math.min(1, (maxY - minY) / height + 2 * padding)
+            };
+
+            const bodyRatio = Math.max(0.01, boundingBox.width * boundingBox.height);
+
+            const centerX = boundingBox.x + boundingBox.width / 2;
+            const centerY = boundingBox.y + boundingBox.height / 2;
+            const position = determinePosition(centerX, centerY);
+
+            const shootingAngle = determineShootingAngle(poses.keypoints);
+
+            let lightingAnalysis = null;
+            if (faces && faces.length > 0) {
+                lightingAnalysis = analyzeFaceLighting(faces[0]);
+            }
+
+            return {
+                boundingBox,
+                bodyRatio,
+                position,
+                shootingAngle,
+                lightingAnalysis,
+                poses,
+                faces
+            };
+        }
+
+        // 确定位置
+        function determinePosition(centerX, centerY) {
+            const leftThreshold = 0.33;
+            const rightThreshold = 0.67;
+            const topThreshold = 0.33;
+            const bottomThreshold = 0.67;
+
+            if (centerY < topThreshold) {
+                if (centerX < leftThreshold) return '左上';
+                else if (centerX > rightThreshold) return '右上';
+                else return '偏上';
+            } else if (centerY > bottomThreshold) {
+                if (centerX < leftThreshold) return '左下';
+                else if (centerX > rightThreshold) return '右下';
+                else return '偏下';
+            } else {
+                if (centerX < leftThreshold) return '偏左';
+                else if (centerX > rightThreshold) return '偏右';
+                else return '居中';
+            }
+        }
+
+        // 确定拍摄角度
+        function determineShootingAngle(keypoints) {
+            const nose = keypoints.find(kp => kp.part === 'nose');
+            const neck = keypoints.find(kp => kp.part === 'neck' || kp.part === 'leftShoulder');
+            
+            if (!nose || !neck || nose.score < 0.1 || neck.score < 0.1) { // 降低阈值
+                return '未知角度';
+            }
+
+            const yDiff = (nose.position.y - neck.position.y) / 100; // 归一化
+
+            if (yDiff > 0.2) return '俯拍角度';
+            else if (yDiff < -0.2) return '仰拍角度';
+            else return '平视角度';
+        }
+
+        // 分析面部光线
+        function analyzeFaceLighting(face) {
+            // 简化的光线分析
+            return {
+                direction: '正面光',
+                quality: '良好'
+            };
+        }
+
+        // 显示参考分析结果
+        function displayReferenceAnalysis(analysis) {
+            const resultsHtml = `
+                <div class="analysis-results">
+                    <h3>📊 分析结果</h3>
+                    <div class="analysis-item">
+                        <span class="label">人物位置</span>
+                        <span class="value">${analysis.position}</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span class="label">占画面比例</span>
+                        <span class="value">${(analysis.bodyRatio * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span class="label">拍摄角度</span>
+                        <span class="value">${analysis.shootingAngle}</span>
+                    </div>
+                    ${analysis.lightingAnalysis ? `
+                    <div class="analysis-item">
+                        <span class="label">光线方向</span>
+                        <span class="value">${analysis.lightingAnalysis.direction}</span>
+                    </div>
+                    <div class="analysis-item">
+                        <span class="label">光线质量</span>
+                        <span class="value">${analysis.lightingAnalysis.quality}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('referenceAnalysis').innerHTML = resultsHtml;
+        }
+
+        // 清除参考照片
+        function clearReference() {
+            document.getElementById('uploadPrompt').style.display = 'block';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('referenceAnalysis').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            referenceAnalysis = null;
+        }
+
+        // 启动相机
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: 640, 
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+                
+                video.srcObject = stream;
+                
+                // 更新按钮状态
+                document.getElementById('startCameraBtn').disabled = true;
+                document.getElementById('stopCameraBtn').disabled = false;
+                document.getElementById('captureBtn').disabled = false;
+                document.getElementById('toggleAnalysisBtn').disabled = false;
+                
+                // 设置canvas尺寸
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                });
+                
+            } catch (error) {
+                console.error('相机启动失败:', error);
+                alert('无法访问相机，请检查权限设置');
+            }
+        }
+
+        // 停止相机
+        function stopCamera() {
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            stopAnalysis();
+            
+            // 更新按钮状态
+            document.getElementById('startCameraBtn').disabled = false;
+            document.getElementById('stopCameraBtn').disabled = true;
+            document.getElementById('captureBtn').disabled = true;
+            document.getElementById('toggleAnalysisBtn').disabled = true;
+        }
+
+        // 切换分析
+        function toggleAnalysis() {
+            if (isAnalyzing) {
+                stopAnalysis();
+            } else {
+                startAnalysis();
+            }
+        }
+
+        // 开始分析
+        function startAnalysis() {
+            if (!poseNet || !video.srcObject) return;
+            
+            isAnalyzing = true;
+            document.getElementById('toggleAnalysisBtn').textContent = '⏹️ 停止分析';
+            document.getElementById('realtimeAnalysis').style.display = 'block';
+            document.getElementById('suggestions').style.display = 'block';
+            
+            analysisInterval = setInterval(async () => {
+                try {
+                    await analyzeCurrentFrame();
+                } catch (error) {
+                    console.error('实时分析失败:', error);
+                }
+            }, 500); // 每500ms分析一次
+        }
+
+        // 停止分析
+        function stopAnalysis() {
+            isAnalyzing = false;
+            document.getElementById('toggleAnalysisBtn').textContent = '🔍 开始分析';
+            
+            if (analysisInterval) {
+                clearInterval(analysisInterval);
+                analysisInterval = null;
+            }
+            
+            // 清除覆盖层
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('statusIndicator').style.display = 'none';
+        }
+
+        // 分析当前帧
+        async function analyzeCurrentFrame() {
+            if (!video.videoWidth || !video.videoHeight) return;
+            
+            try {
+                // 姿态检测 - 使用更低的阈值
+                const poses = await poseNet.estimateSinglePose(video, {
+                    flipHorizontal: true
+                });
+                
+                if (poses.score > 0.1) { // 降低阈值
+                    // 分析当前姿态
+                    const currentAnalysis = analyzePersonPose(poses, [], video.videoWidth, video.videoHeight);
+                    
+                    // 显示实时结果
+                    displayRealtimeAnalysis(currentAnalysis);
+                    
+                    // 绘制检测框、关键点和实时建议
+                    drawDetectionWithSuggestions(currentAnalysis, poses);
+                    
+                    // 生成建议
+                    const suggestions = generateSuggestions(currentAnalysis, referenceAnalysis);
+                    displaySuggestions(suggestions);
+                    
+                    // 更新状态指示器
+                    updateStatusIndicator(currentAnalysis, referenceAnalysis);
+                } else {
+                    // 未检测到人体
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 在画面中心显示提示
+                    drawCenterMessage("未检测到人体\n请确保整个身体在画面中", '#dc3545');
+                    
+                    document.getElementById('currentResults').innerHTML = `
+                        未检测到人体<br>
+                        当前置信度: ${poses.score.toFixed(3)}<br>
+                        建议: 调整位置，确保整个身体可见
+                    `;
+                    document.getElementById('suggestionsList').innerHTML = '<li>请调整位置，确保整个身体在画面中</li><li>增加光线亮度</li><li>避免复杂背景</li>';
+                    
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    statusIndicator.textContent = '未检测到人体';
+                    statusIndicator.className = 'status-indicator status-error';
+                    statusIndicator.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('帧分析失败:', error);
+                drawCenterMessage("分析失败\n" + error.message, '#dc3545');
+            }
+        }
+
+        // 绘制检测结果和实时建议
+        function drawDetectionWithSuggestions(analysis, poses) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制人体边界框
+            const box = analysis.boundingBox;
+            const x = box.x * canvas.width;
+            const y = box.y * canvas.height;
+            const width = box.width * canvas.width;
+            const height = box.height * canvas.height;
+            
+            // 根据匹配程度选择颜色
+            let color = '#dc3545'; // 红色
+            let message = '需要调整';
+            
+            if (referenceAnalysis) {
+                const match = calculateMatchScore(analysis, referenceAnalysis);
+                if (match > 0.8) {
+                    color = '#28a745'; // 绿色
+                    message = '构图很好！';
+                } else if (match > 0.6) {
+                    color = '#ffc107'; // 黄色
+                    message = '接近目标';
+                }
+            } else {
+                color = '#007bff'; // 蓝色
+                message = '人体已检测';
+            }
+            
+            // 绘制边界框
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+            
+            // 绘制关键点
+            poses.keypoints.forEach(keypoint => {
+                if (keypoint.score > 0.1) {
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(keypoint.position.x, keypoint.position.y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            
+            // 在边界框上方显示状态信息
+            ctx.fillStyle = color;
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(message, x + width/2, Math.max(y - 10, 20));
+            
+            // 显示详细信息
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            
+            const infoY = Math.max(y - 35, 35);
+            const infoText = `位置: ${analysis.position} | 比例: ${(analysis.bodyRatio * 100).toFixed(1)}%`;
+            
+            // 文字描边效果
+            ctx.strokeText(infoText, x + width/2, infoY);
+            ctx.fillText(infoText, x + width/2, infoY);
+            
+            // 如果有参考分析，绘制实时对比建议
+            if (referenceAnalysis) {
+                drawRealtimeGuidance(analysis, referenceAnalysis);
+            }
+        }
+
+        // 绘制实时指导
+        function drawRealtimeGuidance(current, reference) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // 设置文本样式
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.lineWidth = 2;
+            
+            let guidance = [];
+            
+            // 位置指导
+            if (current.position !== reference.position) {
+                guidance.push(`🎯 移动到: ${reference.position}`);
+            }
+            
+            // 比例指导
+            const ratioDiff = current.bodyRatio - reference.bodyRatio;
+            if (Math.abs(ratioDiff) > 0.05) {
+                if (ratioDiff > 0) {
+                    guidance.push(`📏 请后退一些`);
+                } else {
+                    guidance.push(`📏 请靠近一些`);
+                }
+            }
+            
+            // 角度指导
+            if (current.shootingAngle !== reference.shootingAngle) {
+                guidance.push(`📐 调整为: ${reference.shootingAngle}`);
+            }
+            
+            // 显示指导信息
+            if (guidance.length > 0) {
+                // 绘制半透明背景
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                const boxHeight = guidance.length * 25 + 20;
+                ctx.fillRect(10, canvas.height - boxHeight - 10, canvas.width - 20, boxHeight);
+                
+                // 绘制指导文字
+                guidance.forEach((text, index) => {
+                    const y = canvas.height - boxHeight + 30 + (index * 25);
+                    
+                    // 文字描边
+                    ctx.strokeStyle = '#000000';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeText(text, centerX, y);
+                    ctx.fillText(text, centerX, y);
+                });
+            } else {
+                // 显示成功信息
+                ctx.fillStyle = 'rgba(40, 167, 69, 0.8)';
+                ctx.fillRect(10, canvas.height - 60, canvas.width - 20, 50);
+                
+                ctx.strokeStyle = '#000000';
+                ctx.fillStyle = '#ffffff';
+                const successText = '🎉 构图完美，可以拍摄了！';
+                ctx.strokeText(successText, centerX, canvas.height - 30);
+                ctx.fillText(successText, centerX, canvas.height - 30);
+            }
+        }
+
+        // 绘制中心消息
+        function drawCenterMessage(message, color) {
+            const lines = message.split('\n');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // 绘制半透明背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            const boxHeight = lines.length * 30 + 20;
+            const boxWidth = 300;
+            ctx.fillRect(centerX - boxWidth/2, centerY - boxHeight/2, boxWidth, boxHeight);
+            
+            // 绘制文字
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = '#000000';
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            
+            lines.forEach((line, index) => {
+                const y = centerY - boxHeight/2 + 35 + (index * 30);
+                ctx.strokeText(line, centerX, y);
+                ctx.fillText(line, centerX, y);
+            });
+        }
+
+        // 显示实时分析结果
+        function displayRealtimeAnalysis(analysis) {
+            const resultsHtml = `
+                <div class="analysis-item">
+                    <span class="label">当前位置</span>
+                    <span class="value">${analysis.position}</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="label">占画面比例</span>
+                    <span class="value">${(analysis.bodyRatio * 100).toFixed(1)}%</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="label">拍摄角度</span>
+                    <span class="value">${analysis.shootingAngle}</span>
+                </div>
+            `;
+            
+            document.getElementById('currentResults').innerHTML = resultsHtml;
+        }
+
+        // 绘制检测结果
+        function drawDetection(analysis, poses) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制边界框
+            const box = analysis.boundingBox;
+            const x = box.x * canvas.width;
+            const y = box.y * canvas.height;
+            const width = box.width * canvas.width;
+            const height = box.height * canvas.height;
+            
+            // 根据匹配程度选择颜色
+            let color = '#dc3545'; // 红色
+            if (referenceAnalysis) {
+                const match = calculateMatchScore(analysis, referenceAnalysis);
+                if (match > 0.8) color = '#28a745'; // 绿色
+                else if (match > 0.6) color = '#ffc107'; // 黄色
+            }
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+            
+            // 绘制关键点
+            poses.keypoints.forEach(keypoint => {
+                if (keypoint.score > 0.3) {
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(keypoint.position.x, keypoint.position.y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 计算匹配分数
+        function calculateMatchScore(current, reference) {
+            if (!reference) return 0;
+            
+            let score = 0;
+            let factors = 0;
+            
+            // 位置匹配
+            if (current.position === reference.position) {
+                score += 0.4;
+            }
+            factors += 0.4;
+            
+            // 比例匹配
+            const ratioDiff = Math.abs(current.bodyRatio - reference.bodyRatio);
+            const ratioScore = Math.max(0, 1 - ratioDiff * 5); // 20%差异得0分
+            score += ratioScore * 0.4;
+            factors += 0.4;
+            
+            // 角度匹配
+            if (current.shootingAngle === reference.shootingAngle) {
+                score += 0.2;
+            }
+            factors += 0.2;
+            
+            return factors > 0 ? score / factors : 0;
+        }
+
+        // 生成建议
+        function generateSuggestions(current, reference) {
+            const suggestions = [];
+            
+            if (!reference) {
+                suggestions.push('已检测到人体，位置：' + current.position);
+                suggestions.push('当前拍摄角度：' + current.shootingAngle);
+                suggestions.push('人体占比：' + (current.bodyRatio * 100).toFixed(1) + '%');
+                return suggestions;
+            }
+            
+            // 位置建议
+            if (current.position !== reference.position) {
+                suggestions.push(`调整位置：目标位置为${reference.position}，当前为${current.position}`);
+            }
+            
+            // 比例建议
+            const ratioDiff = current.bodyRatio - reference.bodyRatio;
+            if (Math.abs(ratioDiff) > 0.05) {
+                if (ratioDiff > 0) {
+                    suggestions.push('人物太大，请后退一些或缩小画面');
+                } else {
+                    suggestions.push('人物太小，请靠近一些或放大画面');
+                }
+            }
+            
+            // 角度建议
+            if (current.shootingAngle !== reference.shootingAngle) {
+                suggestions.push(`调整拍摄角度：目标角度为${reference.shootingAngle}`);
+            }
+            
+            // 如果匹配度很高
+            const matchScore = calculateMatchScore(current, reference);
+            if (matchScore > 0.8) {
+                suggestions.push('构图很好，可以拍摄了！');
+            }
+            
+            if (suggestions.length === 0) {
+                suggestions.push('继续调整以达到更好的效果');
+            }
+            
+            return suggestions;
+        }
+
+        // 显示建议
+        function displaySuggestions(suggestions) {
+            const listHtml = suggestions.map(suggestion => `<li>${suggestion}</li>`).join('');
+            document.getElementById('suggestionsList').innerHTML = listHtml;
+        }
+
+        // 更新状态指示器
+        function updateStatusIndicator(current, reference) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            if (!reference) {
+                statusIndicator.textContent = '人体已检测';
+                statusIndicator.className = 'status-indicator status-warning';
+            } else {
+                const matchScore = calculateMatchScore(current, reference);
+                
+                if (matchScore > 0.8) {
+                    statusIndicator.textContent = '匹配度优秀';
+                    statusIndicator.className = 'status-indicator status-good';
+                } else if (matchScore > 0.6) {
+                    statusIndicator.textContent = '匹配度良好';
+                    statusIndicator.className = 'status-indicator status-warning';
+                } else {
+                    statusIndicator.textContent = '需要调整';
+                    statusIndicator.className = 'status-indicator status-error';
+                }
+            }
+            
+            statusIndicator.style.display = 'block';
+        }
+
+        // 拍摄照片
+        function capturePhoto() {
+            const captureCanvas = document.createElement('canvas');
+            const captureCtx = captureCanvas.getContext('2d');
+            
+            captureCanvas.width = video.videoWidth;
+            captureCanvas.height = video.videoHeight;
+            captureCtx.drawImage(video, 0, 0);
+            
+            // 下载照片
+            const link = document.createElement('a');
+            link.download = `智能摄影_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.png`;
+            link.href = captureCanvas.toDataURL();
+            link.click();
+            
+            // 显示拍摄成功提示
+            const originalText = document.getElementById('captureBtn').innerHTML;
+            document.getElementById('captureBtn').innerHTML = '✅ 已保存';
+            setTimeout(() => {
+                document.getElementById('captureBtn').innerHTML = originalText;
+            }, 2000);
+        }
+
+        // 绘制网格
+        function drawGrid() {
+            const svg = document.getElementById('gridOverlay');
+            
+            // 创建网格线
+            const gridHTML = `
+                <defs>
+                    <pattern id="grid" width="33.33%" height="33.33%" patternUnits="objectBoundingBox">
+                        <path d="M 33.33 0 L 33.33 33.33 M 0 33.33 L 33.33 33.33" 
+                              fill="none" stroke="white" stroke-width="1" opacity="0.5"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+            `;
+            
+            svg.innerHTML = gridHTML;
+        }
+    </script>
+</body>
+</html> 

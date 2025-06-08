@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能摄影助手 - 调试版本</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .debug-info {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .debug-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .debug-log {
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-error { color: #dc3545; }
+        .log-warning { color: #ffc107; }
+        .log-info { color: #007bff; }
+        .log-success { color: #28a745; }
+
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-good { background: #28a745; color: white; }
+        .status-warning { background: #ffc107; color: #333; }
+        .status-error { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 AI智能摄影助手 - 调试版</h1>
+            <p>详细日志和低阈值检测，帮助诊断问题</p>
+        </div>
+
+        <div class="debug-info">
+            <strong>系统状态：</strong> <span id="systemStatus">初始化中...</span><br>
+            <strong>模型状态：</strong> <span id="modelStatus">未加载</span><br>
+            <strong>相机状态：</strong> <span id="cameraStatus">未启动</span><br>
+            <strong>检测状态：</strong> <span id="detectionStatus">未开始</span>
+        </div>
+
+        <div class="main-content">
+            <!-- 调试控制台 -->
+            <div class="card">
+                <h2>🔍 调试控制台</h2>
+                
+                <div class="debug-panel">
+                    <div id="debugLog" class="debug-log">
+                        等待调试信息...<br>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="clearLog()">清除日志</button>
+                    <button class="btn btn-secondary" onclick="testModelLoading()">测试模型</button>
+                    <button class="btn btn-secondary" onclick="downloadLog()">下载日志</button>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3>检测参数调整：</h3>
+                    <label>置信度阈值: <input type="range" id="confidenceThreshold" min="0.1" max="0.9" step="0.1" value="0.1" onchange="updateThreshold()"></label>
+                    <span id="thresholdValue">0.1</span><br><br>
+                    
+                    <label>分析频率(ms): <input type="range" id="analysisInterval" min="100" max="2000" step="100" value="500" onchange="updateInterval()"></label>
+                    <span id="intervalValue">500</span>
+                </div>
+            </div>
+
+            <!-- 相机测试区域 -->
+            <div class="card">
+                <h2>📹 相机测试</h2>
+                
+                <div class="video-container">
+                    <video id="videoElement" autoplay muted playsinline></video>
+                    <canvas id="overlayCanvas" class="canvas-overlay"></canvas>
+                    <div id="statusIndicator" class="status-indicator" style="display: none;"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="startCameraBtn" onclick="startCamera()">
+                        📷 启动相机
+                    </button>
+                    <button class="btn btn-secondary" id="stopCameraBtn" onclick="stopCamera()" disabled>
+                        ⏹️ 停止相机
+                    </button>
+                    <button class="btn btn-success" id="toggleAnalysisBtn" onclick="toggleAnalysis()" disabled>
+                        🔍 开始检测
+                    </button>
+                </div>
+
+                <div id="detectionResults" style="margin-top: 20px;">
+                    <h3>检测结果：</h3>
+                    <div id="currentResults">等待检测...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TensorFlow.js 和 PoseNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+
+    <script>
+        // 全局变量
+        let video, canvas, ctx;
+        let poseNet;
+        let isAnalyzing = false;
+        let analysisInterval = null;
+        let confidenceThreshold = 0.1; // 降低阈值
+        let intervalMs = 500;
+
+        // 调试日志
+        function debugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debugLog');
+            const logClass = `log-${type}`;
+            
+            logElement.innerHTML += `<span class="${logClass}">[${timestamp}] ${message}</span><br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '日志已清除<br>';
+        }
+
+        function downloadLog() {
+            const logContent = document.getElementById('debugLog').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `debug_log_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 更新状态
+        function updateStatus(element, status, type = 'info') {
+            document.getElementById(element).textContent = status;
+            if (type === 'error') {
+                document.getElementById(element).style.color = '#dc3545';
+            } else if (type === 'success') {
+                document.getElementById(element).style.color = '#28a745';
+            } else {
+                document.getElementById(element).style.color = '#007bff';
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            debugLog('页面加载完成，开始初始化', 'info');
+            updateStatus('systemStatus', '正在初始化...');
+            
+            // 检查浏览器支持
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                debugLog('浏览器不支持 WebRTC', 'error');
+                updateStatus('systemStatus', '浏览器不支持', 'error');
+                return;
+            }
+            
+            debugLog('浏览器支持检查通过', 'success');
+            
+            // 检查 TensorFlow.js
+            if (typeof tf === 'undefined') {
+                debugLog('TensorFlow.js 未加载', 'error');
+                updateStatus('modelStatus', 'TensorFlow.js 未加载', 'error');
+                return;
+            }
+            
+            debugLog('TensorFlow.js 加载成功', 'success');
+            
+            await initializeModels();
+            setupEventListeners();
+            
+            updateStatus('systemStatus', '初始化完成', 'success');
+        });
+
+        // 初始化AI模型
+        async function initializeModels() {
+            try {
+                debugLog('开始加载 PoseNet 模型...', 'info');
+                updateStatus('modelStatus', '正在加载...');
+                
+                // 加载PoseNet模型 - 使用更宽松的配置
+                poseNet = await posenet.load({
+                    architecture: 'MobileNetV1',
+                    outputStride: 16,
+                    inputResolution: { width: 513, height: 513 }, // 提高分辨率
+                    multiplier: 0.75
+                });
+                
+                debugLog('PoseNet 模型加载成功', 'success');
+                updateStatus('modelStatus', '已加载', 'success');
+                
+            } catch (error) {
+                debugLog(`模型加载失败: ${error.message}`, 'error');
+                updateStatus('modelStatus', '加载失败', 'error');
+                console.error('模型加载失败:', error);
+            }
+        }
+
+        // 测试模型
+        async function testModelLoading() {
+            debugLog('开始测试模型功能...', 'info');
+            
+            if (!poseNet) {
+                debugLog('PoseNet 模型未加载', 'error');
+                return;
+            }
+            
+            try {
+                // 创建测试图像
+                const testCanvas = document.createElement('canvas');
+                testCanvas.width = 200;
+                testCanvas.height = 200;
+                const testCtx = testCanvas.getContext('2d');
+                
+                // 绘制简单图形
+                testCtx.fillStyle = '#ff0000';
+                testCtx.fillRect(50, 50, 100, 100);
+                
+                const poses = await poseNet.estimateSinglePose(testCanvas, {
+                    flipHorizontal: false
+                });
+                
+                debugLog(`模型测试完成，置信度: ${poses.score.toFixed(3)}`, 'success');
+                
+            } catch (error) {
+                debugLog(`模型测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            video = document.getElementById('videoElement');
+            canvas = document.getElementById('overlayCanvas');
+            ctx = canvas.getContext('2d');
+            
+            debugLog('事件监听器设置完成', 'success');
+        }
+
+        // 更新参数
+        function updateThreshold() {
+            confidenceThreshold = parseFloat(document.getElementById('confidenceThreshold').value);
+            document.getElementById('thresholdValue').textContent = confidenceThreshold;
+            debugLog(`置信度阈值更新为: ${confidenceThreshold}`, 'info');
+        }
+
+        function updateInterval() {
+            intervalMs = parseInt(document.getElementById('analysisInterval').value);
+            document.getElementById('intervalValue').textContent = intervalMs;
+            debugLog(`分析间隔更新为: ${intervalMs}ms`, 'info');
+            
+            // 如果正在分析，重启分析
+            if (isAnalyzing) {
+                stopAnalysis();
+                setTimeout(startAnalysis, 100);
+            }
+        }
+
+        // 启动相机
+        async function startCamera() {
+            try {
+                debugLog('请求相机权限...', 'info');
+                updateStatus('cameraStatus', '请求权限中...');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                });
+                
+                debugLog('相机权限获取成功', 'success');
+                video.srcObject = stream;
+                
+                // 更新按钮状态
+                document.getElementById('startCameraBtn').disabled = true;
+                document.getElementById('stopCameraBtn').disabled = false;
+                document.getElementById('toggleAnalysisBtn').disabled = false;
+                
+                updateStatus('cameraStatus', '已启动', 'success');
+                
+                // 设置canvas尺寸
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    debugLog(`视频尺寸: ${video.videoWidth} x ${video.videoHeight}`, 'info');
+                });
+                
+            } catch (error) {
+                debugLog(`相机启动失败: ${error.message}`, 'error');
+                updateStatus('cameraStatus', '启动失败', 'error');
+                console.error('相机启动失败:', error);
+            }
+        }
+
+        // 停止相机
+        function stopCamera() {
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+                debugLog('相机已停止', 'info');
+            }
+            
+            stopAnalysis();
+            
+            // 更新按钮状态
+            document.getElementById('startCameraBtn').disabled = false;
+            document.getElementById('stopCameraBtn').disabled = true;
+            document.getElementById('toggleAnalysisBtn').disabled = true;
+            
+            updateStatus('cameraStatus', '已停止');
+        }
+
+        // 切换分析
+        function toggleAnalysis() {
+            if (isAnalyzing) {
+                stopAnalysis();
+            } else {
+                startAnalysis();
+            }
+        }
+
+        // 开始分析
+        function startAnalysis() {
+            if (!poseNet || !video.srcObject) {
+                debugLog('无法开始分析：模型或相机未就绪', 'error');
+                return;
+            }
+            
+            isAnalyzing = true;
+            document.getElementById('toggleAnalysisBtn').textContent = '⏹️ 停止检测';
+            updateStatus('detectionStatus', '检测中...', 'success');
+            
+            debugLog(`开始人体检测，间隔: ${intervalMs}ms，阈值: ${confidenceThreshold}`, 'info');
+            
+            analysisInterval = setInterval(async () => {
+                try {
+                    await analyzeCurrentFrame();
+                } catch (error) {
+                    debugLog(`分析帧失败: ${error.message}`, 'error');
+                }
+            }, intervalMs);
+        }
+
+        // 停止分析
+        function stopAnalysis() {
+            isAnalyzing = false;
+            document.getElementById('toggleAnalysisBtn').textContent = '🔍 开始检测';
+            updateStatus('detectionStatus', '已停止');
+            
+            if (analysisInterval) {
+                clearInterval(analysisInterval);
+                analysisInterval = null;
+            }
+            
+            // 清除覆盖层
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            debugLog('停止人体检测', 'info');
+        }
+
+        // 分析当前帧
+        async function analyzeCurrentFrame() {
+            if (!video.videoWidth || !video.videoHeight) return;
+            
+            try {
+                // 姿态检测
+                const poses = await poseNet.estimateSinglePose(video, {
+                    flipHorizontal: true
+                });
+                
+                debugLog(`检测结果 - 置信度: ${poses.score.toFixed(3)}, 关键点数: ${poses.keypoints.length}`, 'info');
+                
+                // 显示所有关键点信息（用于调试）
+                const validKeypoints = poses.keypoints.filter(kp => kp.score > confidenceThreshold);
+                debugLog(`有效关键点数 (阈值 ${confidenceThreshold}): ${validKeypoints.length}`, 'info');
+                
+                if (poses.score > confidenceThreshold) {
+                    // 分析当前姿态
+                    const analysis = analyzePersonPose(poses, video.videoWidth, video.videoHeight);
+                    
+                    // 显示结果
+                    displayResults(analysis);
+                    
+                    // 绘制检测结果
+                    drawDetection(poses);
+                    
+                    // 更新状态
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    statusIndicator.textContent = '检测到人体';
+                    statusIndicator.className = 'status-indicator status-good';
+                    statusIndicator.style.display = 'block';
+                    
+                    debugLog(`人体检测成功 - 位置: ${analysis.position}, 比例: ${(analysis.bodyRatio * 100).toFixed(1)}%`, 'success');
+                    
+                } else {
+                    // 未检测到人体
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    document.getElementById('currentResults').innerHTML = `
+                        未检测到人体<br>
+                        当前置信度: ${poses.score.toFixed(3)}<br>
+                        需要置信度: ${confidenceThreshold}
+                    `;
+                    
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    statusIndicator.textContent = '未检测到人体';
+                    statusIndicator.className = 'status-indicator status-error';
+                    statusIndicator.style.display = 'block';
+                    
+                    debugLog(`人体检测失败 - 置信度 ${poses.score.toFixed(3)} < ${confidenceThreshold}`, 'warning');
+                }
+                
+            } catch (error) {
+                debugLog(`帧分析失败: ${error.message}`, 'error');
+                console.error('帧分析失败:', error);
+            }
+        }
+
+        // 分析人体姿态
+        function analyzePersonPose(poses, width, height) {
+            // 计算边界框
+            const keypoints = poses.keypoints.filter(kp => kp.score > confidenceThreshold);
+            
+            if (keypoints.length === 0) {
+                debugLog('没有有效的关键点', 'warning');
+                return null;
+            }
+            
+            const xs = keypoints.map(kp => kp.position.x);
+            const ys = keypoints.map(kp => kp.position.y);
+            
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            
+            const boundingBox = {
+                x: minX / width,
+                y: minY / height,
+                width: (maxX - minX) / width,
+                height: (maxY - minY) / height
+            };
+
+            // 计算人体占画面比例
+            const bodyRatio = boundingBox.width * boundingBox.height;
+
+            // 分析位置
+            const centerX = boundingBox.x + boundingBox.width / 2;
+            const centerY = boundingBox.y + boundingBox.height / 2;
+            const position = determinePosition(centerX, centerY);
+
+            // 分析拍摄角度
+            const shootingAngle = determineShootingAngle(poses.keypoints);
+
+            return {
+                boundingBox,
+                bodyRatio,
+                position,
+                shootingAngle,
+                keypoints: keypoints.length,
+                totalKeypoints: poses.keypoints.length,
+                confidence: poses.score
+            };
+        }
+
+        // 确定位置
+        function determinePosition(centerX, centerY) {
+            if (centerY < 0.33) {
+                if (centerX < 0.33) return '左上';
+                else if (centerX > 0.67) return '右上';
+                else return '偏上';
+            } else if (centerY > 0.67) {
+                if (centerX < 0.33) return '左下';
+                else if (centerX > 0.67) return '右下';
+                else return '偏下';
+            } else {
+                if (centerX < 0.33) return '偏左';
+                else if (centerX > 0.67) return '偏右';
+                else return '居中';
+            }
+        }
+
+        // 确定拍摄角度
+        function determineShootingAngle(keypoints) {
+            const nose = keypoints.find(kp => kp.part === 'nose');
+            const neck = keypoints.find(kp => kp.part === 'neck' || kp.part === 'leftShoulder');
+            
+            if (!nose || !neck || nose.score < confidenceThreshold || neck.score < confidenceThreshold) {
+                return '未知角度';
+            }
+
+            const yDiff = (nose.position.y - neck.position.y) / 100;
+
+            if (yDiff > 0.2) return '俯拍角度';
+            else if (yDiff < -0.2) return '仰拍角度';
+            else return '平视角度';
+        }
+
+        // 显示结果
+        function displayResults(analysis) {
+            if (!analysis) return;
+            
+            document.getElementById('currentResults').innerHTML = `
+                <strong>检测成功！</strong><br>
+                位置: ${analysis.position}<br>
+                占画面比例: ${(analysis.bodyRatio * 100).toFixed(1)}%<br>
+                拍摄角度: ${analysis.shootingAngle}<br>
+                置信度: ${analysis.confidence.toFixed(3)}<br>
+                有效关键点: ${analysis.keypoints}/${analysis.totalKeypoints}
+            `;
+        }
+
+        // 绘制检测结果
+        function drawDetection(poses) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制关键点
+            poses.keypoints.forEach(keypoint => {
+                if (keypoint.score > confidenceThreshold) {
+                    ctx.fillStyle = '#00ff00'; // 绿色表示有效关键点
+                    ctx.beginPath();
+                    ctx.arc(keypoint.position.x, keypoint.position.y, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // 绘制关键点标签
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px Arial';
+                    ctx.fillText(keypoint.part.substring(0, 3), keypoint.position.x + 8, keypoint.position.y);
+                } else {
+                    // 低置信度关键点用红色显示
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(keypoint.position.x, keypoint.position.y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+    </script>
+</body>
+</html> 
